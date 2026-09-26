@@ -115,18 +115,21 @@
 
   /* ---------- Cinema ---------- */
   .video { background: var(--blush); }
+  .video { padding-left: 12px; padding-right: 12px; }
   .moldura {
-    /* Proporção do vídeo: troque para 9 / 16 se ele foi gravado em pé */
+    /* A proporção é detectada sozinha pela miniatura do Drive; 16 / 9 é só o ponto de partida */
     --proporcao: 16 / 9;
     position: relative;
-    width: min(100%, 960px, calc(80svh * (var(--proporcao))));
+    width: min(100%, 1000px, calc(86svh * (var(--proporcao))));
     aspect-ratio: var(--proporcao);
-    border-radius: 20px;
+    border-radius: 16px;
     overflow: hidden;
-    border: 3px solid var(--gold-deep);
-    background: var(--ink);
-    box-shadow: 0 0 0 8px var(--blush), 0 0 0 10px var(--gold);
+    border: 2px solid var(--gold-deep);
+    background: #000;
+    box-shadow: 0 18px 50px -18px rgba(58, 15, 46, .55);
   }
+  /* Tampa o botão "abrir no Drive" do canto do player, para ela não sair do site */
+  .tampa { position: absolute; top: 0; right: 0; width: 64px; height: 64px; z-index: 1; }
   .moldura iframe { width: 100%; height: 100%; border: 0; display: block; }
   .cortina {
     position: absolute;
@@ -168,8 +171,7 @@
   @keyframes surge { from { opacity: 0; transform: scale(.9); } to { opacity: 1; transform: none; } }
   @keyframes quica { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(8px); } }
   @media (prefers-reduced-motion: reduce) {
-    #sim, #nao, #nao.solto, .cortina, #bomfilme { transition: none; }
-    body.aceito .boas-vindas h1, .role svg { animation: none; }
+    .role svg { animation: none; }
   }
 </style>
 </head>
@@ -200,6 +202,7 @@
     <div class="moldura" id="moldura">
       <iframe id="player" title="Vídeo" allow="autoplay; fullscreen" allowfullscreen
         data-src="https://drive.google.com/file/d/1NtvqhmDN0xrq9fLYgjuFe6DHwwy0HvaR/preview"></iframe>
+      <div class="tampa" aria-hidden="true"></div>
       <div class="cortina esq" aria-hidden="true"></div>
       <div class="cortina dir" aria-hidden="true"></div>
       <button id="bomfilme" type="button">Bom filme 🍿</button>
@@ -211,8 +214,8 @@
 (() => {
   const nao = document.getElementById('nao');
   const sim = document.getElementById('sim');
+  const titulo = document.querySelector('#pergunta h1');
   const player = document.getElementById('player');
-  const reduzido = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   /* =========== O "Não" que foge =========== */
   const MARGEM = 16, ALCANCE = 90;
@@ -244,14 +247,25 @@
 
     const w = nao.offsetWidth, h = nao.offsetHeight;
     const maxX = innerWidth - w - MARGEM, maxY = innerHeight - h - MARGEM;
-    const rSim = sim.getBoundingClientRect();
-    let x, y, ok = false;
-    for (let i = 0; i < 50 && !ok; i++) {
-      x = MARGEM + Math.random() * Math.max(0, maxX - MARGEM);
-      y = MARGEM + Math.random() * Math.max(0, maxY - MARGEM);
-      const longe = px == null || Math.hypot(x + w / 2 - px, y + h / 2 - py) > ALCANCE * 2;
-      ok = longe && !sobrepoe({ left: x, top: y, right: x + w, bottom: y + h }, rSim);
+    // Áreas proibidas: o título "Preparada?" e o botão Sim
+    const proibidas = [titulo.getBoundingClientRect(), sim.getBoundingClientRect()];
+    const livre = a => proibidas.every(b => !sobrepoe(a, b));
+    const sortear = () => [
+      MARGEM + Math.random() * Math.max(0, maxX - MARGEM),
+      MARGEM + Math.random() * Math.max(0, maxY - MARGEM)
+    ];
+
+    let x, y, ok = false, reserva = null;
+    for (let i = 0; i < 200 && !ok; i++) {
+      [x, y] = sortear();
+      const alvo = { left: x, top: y, right: x + w, bottom: y + h };
+      if (!livre(alvo)) continue;
+      reserva = reserva || [x, y];
+      ok = px == null || Math.hypot(x + w / 2 - px, y + h / 2 - py) > ALCANCE * 2;
     }
+    // Se não achou lugar longe do dedo, usa um que ao menos não cubra título nem Sim
+    if (!ok && reserva) [x, y] = reserva;
+    if (!ok && !reserva) return;
     nao.style.left = x + 'px';
     nao.style.top = y + 'px';
   }
@@ -277,7 +291,6 @@
 
   /* =========== Chuva de corações =========== */
   function coracoes(origem) {
-    if (reduzido) return;
     const r = origem.getBoundingClientRect();
     const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
     const tipos = ['💖', '💗', '💕', '✨', '💛'];
@@ -315,7 +328,7 @@
   /* =========== Rolagem animada de 1 segundo entre as telas =========== */
   function ativarRolagem() {
     const secoes = [document.querySelector('.boas-vindas'), document.getElementById('video')];
-    const DURACAO = reduzido ? 0 : 1000;
+    const DURACAO = 1000;
     let atual = 0, bloqueado = false;
     const suave = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
@@ -356,6 +369,14 @@
     document.getElementById('role').addEventListener('click', e => { e.preventDefault(); irPara(1); });
     addEventListener('resize', () => scrollTo(0, secoes[atual].offsetTop));
   }
+
+  /* =========== Proporção real do vídeo, lida da miniatura do Drive =========== */
+  const mini = new Image();
+  mini.onload = () => {
+    if (mini.naturalWidth && mini.naturalHeight)
+      document.getElementById('moldura').style.setProperty('--proporcao', `${mini.naturalWidth} / ${mini.naturalHeight}`);
+  };
+  mini.src = 'https://drive.google.com/thumbnail?id=1NtvqhmDN0xrq9fLYgjuFe6DHwwy0HvaR&sz=w640';
 
   /* =========== Cortinas do cinema =========== */
   document.getElementById('bomfilme').addEventListener('click', () => {
