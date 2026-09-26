@@ -130,7 +130,23 @@
   }
   /* Tampa o botão "abrir no Drive" do canto do player, para ela não sair do site */
   .tampa { position: absolute; top: 0; right: 0; width: 64px; height: 64px; z-index: 1; }
-  .moldura iframe { width: 100%; height: 100%; border: 0; display: block; }
+  .moldura iframe, .moldura video { width: 100%; height: 100%; border: 0; display: block; background: #000; }
+  .moldura [hidden] { display: none !important; }
+  #telacheia {
+    position: absolute;
+    left: 10px; top: 10px;
+    z-index: 1;
+    font-size: .9rem;
+    padding: .55rem .9rem;
+    background: rgba(58, 15, 46, .75);
+    color: var(--blush);
+    border-color: var(--gold);
+  }
+  .moldura:fullscreen, .moldura:-webkit-full-screen {
+    width: 100%; height: 100%; max-width: none; aspect-ratio: auto;
+    border: 0; border-radius: 0; box-shadow: none;
+  }
+  .moldura:fullscreen #telacheia, .moldura:-webkit-full-screen #telacheia { display: none; }
   .cortina {
     position: absolute;
     top: 0; bottom: 0;
@@ -200,9 +216,13 @@
 
   <section id="video" class="tela video">
     <div class="moldura" id="moldura">
-      <iframe id="player" title="Vídeo" allow="autoplay; fullscreen" allowfullscreen
+      <!-- 1ª opção: video.mp4 no próprio repositório (player nativo, tela cheia em qualquer celular) -->
+      <video id="nativo" playsinline controls preload="none" hidden></video>
+      <!-- 2ª opção, automática se o video.mp4 não existir: player do Google Drive -->
+      <iframe id="player" title="Vídeo" allow="autoplay; fullscreen" allowfullscreen hidden
         data-src="https://drive.google.com/file/d/1NtvqhmDN0xrq9fLYgjuFe6DHwwy0HvaR/preview"></iframe>
-      <div class="tampa" aria-hidden="true"></div>
+      <div class="tampa" aria-hidden="true" hidden></div>
+      <button id="telacheia" type="button" hidden>⛶ Tela cheia</button>
       <div class="cortina esq" aria-hidden="true"></div>
       <div class="cortina dir" aria-hidden="true"></div>
       <button id="bomfilme" type="button">Bom filme 🍿</button>
@@ -216,6 +236,9 @@
   const sim = document.getElementById('sim');
   const titulo = document.querySelector('#pergunta h1');
   const player = document.getElementById('player');
+  const nativo = document.getElementById('nativo');
+  const moldura = document.getElementById('moldura');
+  let modo = null; // 'nativo' ou 'drive'
 
   /* =========== O "Não" que foge =========== */
   const MARGEM = 16, ALCANCE = 90;
@@ -318,7 +341,7 @@
     coracoes(origem);
     document.removeEventListener('pointermove', aoMover);
     nao.remove();
-    player.src = player.dataset.src; // o player já carrega enquanto ela lê as boas-vindas
+    prepararVideo(); // o player já carrega enquanto ela lê as boas-vindas
     document.body.classList.add('aceito');
     scrollTo(0, 0);
     ativarRolagem();
@@ -346,13 +369,15 @@
     }
 
     addEventListener('wheel', e => {
+      if (document.fullscreenElement || document.webkitFullscreenElement) return;
       e.preventDefault();
       if (Math.abs(e.deltaY) > 8) irPara(atual + Math.sign(e.deltaY));
     }, { passive: false });
 
     let y0 = null;
-    addEventListener('touchstart', e => { y0 = e.touches[0].clientY; }, { passive: true });
-    addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+    const noPlayer = e => e.target.closest && e.target.closest('.moldura');
+    addEventListener('touchstart', e => { y0 = noPlayer(e) ? null : e.touches[0].clientY; }, { passive: true });
+    addEventListener('touchmove', e => { if (!noPlayer(e)) e.preventDefault(); }, { passive: false });
     addEventListener('touchend', e => {
       if (y0 == null) return;
       const dy = y0 - e.changedTouches[0].clientY;
@@ -370,17 +395,53 @@
     addEventListener('resize', () => scrollTo(0, secoes[atual].offsetTop));
   }
 
-  /* =========== Proporção real do vídeo, lida da miniatura do Drive =========== */
-  const mini = new Image();
-  mini.onload = () => {
-    if (mini.naturalWidth && mini.naturalHeight)
-      document.getElementById('moldura').style.setProperty('--proporcao', `${mini.naturalWidth} / ${mini.naturalHeight}`);
-  };
-  mini.src = 'https://drive.google.com/thumbnail?id=1NtvqhmDN0xrq9fLYgjuFe6DHwwy0HvaR&sz=w640';
+  /* =========== Escolha do player =========== */
+  const proporcao = (w, h) => { if (w && h) moldura.style.setProperty('--proporcao', `${w} / ${h}`); };
+
+  function usarDrive() {
+    if (modo) return;
+    modo = 'drive';
+    nativo.remove();
+    player.src = player.dataset.src;
+    player.hidden = false;
+    document.querySelector('.tampa').hidden = false;
+    // Tela cheia própria: o Drive dentro de iframe não oferece no celular
+    if (document.fullscreenEnabled || document.webkitFullscreenEnabled)
+      document.getElementById('telacheia').hidden = false;
+    const mini = new Image();
+    mini.onload = () => proporcao(mini.naturalWidth, mini.naturalHeight);
+    mini.src = 'https://drive.google.com/thumbnail?id=1NtvqhmDN0xrq9fLYgjuFe6DHwwy0HvaR&sz=w640';
+  }
+
+  function prepararVideo() {
+    nativo.addEventListener('loadedmetadata', () => {
+      if (modo) return;
+      modo = 'nativo';
+      player.remove();
+      nativo.hidden = false;
+      proporcao(nativo.videoWidth, nativo.videoHeight);
+    }, { once: true });
+    nativo.addEventListener('error', usarDrive, { once: true });
+    setTimeout(() => { if (!modo) usarDrive(); }, 6000); // rede lenta: não deixa ela esperando
+    nativo.preload = 'metadata';
+    nativo.src = 'video.mp4';
+  }
+
+  document.getElementById('telacheia').addEventListener('click', async () => {
+    const deitado = moldura.clientWidth >= moldura.clientHeight; // medir antes de expandir
+    try {
+      if (moldura.requestFullscreen) await moldura.requestFullscreen();
+      else if (moldura.webkitRequestFullscreen) moldura.webkitRequestFullscreen();
+      if (deitado && screen.orientation && screen.orientation.lock)
+        screen.orientation.lock('landscape').catch(() => {});
+    } catch (_) {}
+  });
 
   /* =========== Cortinas do cinema =========== */
   document.getElementById('bomfilme').addEventListener('click', () => {
-    document.getElementById('moldura').classList.add('aberta');
+    moldura.classList.add('aberta');
+    // Com o vídeo nativo, o toque em "Bom filme" já dá o play, com som
+    if (modo === 'nativo') nativo.play().catch(() => {});
   });
 })();
 </script>
