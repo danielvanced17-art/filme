@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Preparada? 💖</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💖</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --blush: #FFE3EC;
+    --rose: #F7B6CB;
+    --velvet: #D9577E;
+    --ink: #3A0F2E;
+    --ink-soft: #7A4A68;
+    --gold: #E3BE6E;
+    --gold-deep: #B8913F;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--blush);
+    color: var(--ink);
+    height: 100svh;
+    overflow: hidden;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tela {
+    height: 100svh;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    padding: calc(1.5rem + env(safe-area-inset-top, 0px)) 1.25rem calc(1.5rem + env(safe-area-inset-bottom, 0px));
+    position: relative;
+  }
+  h1 {
+    font-size: clamp(3.5rem, 15vw, 11rem);
+    font-weight: 800;
+    letter-spacing: -0.05em;
+    line-height: 0.9;
+  }
+  .coracao { font-size: .7em; letter-spacing: 0; display: inline-block; vertical-align: .08em; }
+  button {
+    font: 600 1.25rem/1 "Inter", system-ui, sans-serif;
+    padding: 1rem 2.4rem;
+    border-radius: 999px;
+    border: 2px solid var(--ink);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  button:focus-visible, a:focus-visible { outline: 3px solid var(--gold-deep); outline-offset: 4px; }
+
+  /* ---------- Pergunta ---------- */
+  .actions {
+    margin-top: clamp(2rem, 6vh, 3.5rem);
+    display: flex;
+    gap: 1.25rem;
+    justify-content: center;
+    align-items: center;
+  }
+  #sim {
+    --s: 1;
+    background: var(--ink);
+    color: var(--blush);
+    transform: scale(var(--s));
+    transition: transform .35s cubic-bezier(.3,1.6,.5,1), box-shadow .35s;
+    position: relative;
+    z-index: 5;
+  }
+  #sim:hover { transform: scale(calc(var(--s) * 1.05)); box-shadow: 0 0 0 6px var(--gold); }
+  #nao {
+    --n: 1;
+    background: transparent;
+    color: var(--ink);
+    transform: scale(var(--n));
+    transition: transform .3s, background .3s, color .3s;
+  }
+  #nao.solto {
+    position: fixed;
+    z-index: 10;
+    transition: left .3s cubic-bezier(.2,.8,.2,1), top .3s cubic-bezier(.2,.8,.2,1), transform .3s, background .3s, color .3s;
+  }
+
+  /* ---------- Depois do "Sim" ---------- */
+  #final { display: none; }
+  body.aceito { height: auto; background: var(--rose); }
+  body.aceito #pergunta { display: none; }
+  body.aceito #final { display: block; }
+  body.aceito .boas-vindas h1 { animation: surge .8s cubic-bezier(.2,.8,.2,1); }
+  .filete {
+    display: block;
+    width: 72px;
+    height: 3px;
+    margin: 1.75rem auto 0;
+    border-radius: 3px;
+    background: var(--gold-deep);
+  }
+  .role {
+    position: absolute;
+    left: 50%;
+    bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%);
+    color: var(--ink);
+    text-decoration: none;
+    font-weight: 600;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .5rem;
+  }
+  .role svg { color: var(--gold-deep); animation: quica 1.6s ease-in-out infinite; }
+
+  /* ---------- Cinema ---------- */
+  .video { background: var(--blush); }
+  .moldura {
+    /* Proporção do vídeo: troque para 9 / 16 se ele foi gravado em pé */
+    --proporcao: 16 / 9;
+    position: relative;
+    width: min(100%, 960px, calc(80svh * (var(--proporcao))));
+    aspect-ratio: var(--proporcao);
+    border-radius: 20px;
+    overflow: hidden;
+    border: 3px solid var(--gold-deep);
+    background: var(--ink);
+    box-shadow: 0 0 0 8px var(--blush), 0 0 0 10px var(--gold);
+  }
+  .moldura iframe { width: 100%; height: 100%; border: 0; display: block; }
+  .cortina {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 50.5%;
+    background: repeating-linear-gradient(90deg,
+      var(--velvet) 0 16px, #C24570 16px 26px, #E6799A 26px 38px, var(--velvet) 38px 48px);
+    transition: transform 1.3s cubic-bezier(.7,0,.2,1);
+    z-index: 2;
+  }
+  .cortina.esq { left: 0; border-right: 3px solid var(--gold); }
+  .cortina.dir { right: 0; border-left: 3px solid var(--gold); }
+  .moldura.aberta .cortina.esq { transform: translateX(-102%); }
+  .moldura.aberta .cortina.dir { transform: translateX(102%); }
+  #bomfilme {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 3;
+    background: var(--gold);
+    border-color: var(--ink);
+    color: var(--ink);
+    font-size: clamp(1.1rem, 3.5vw, 1.5rem);
+    padding: 1.1rem 2.2rem;
+    transition: opacity .4s, transform .4s;
+  }
+  #bomfilme:hover { transform: translate(-50%, -50%) scale(1.05); }
+  .moldura.aberta #bomfilme { opacity: 0; pointer-events: none; transform: translate(-50%, -50%) scale(.9); }
+
+  /* ---------- Chuva de corações ---------- */
+  .particula {
+    position: fixed;
+    z-index: 50;
+    pointer-events: none;
+    font-size: 1.6rem;
+    will-change: transform, opacity;
+  }
+
+  @keyframes surge { from { opacity: 0; transform: scale(.9); } to { opacity: 1; transform: none; } }
+  @keyframes quica { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(8px); } }
+  @media (prefers-reduced-motion: reduce) {
+    #sim, #nao, #nao.solto, .cortina, #bomfilme { transition: none; }
+    body.aceito .boas-vindas h1, .role svg { animation: none; }
+  }
+</style>
+</head>
+<body>
+<main id="pergunta" class="tela">
+  <section>
+    <h1>Preparada? <span class="coracao" aria-hidden="true">💖</span></h1>
+    <div class="actions">
+      <button id="sim" type="button">Sim</button>
+      <button id="nao" type="button">Não</button>
+    </div>
+  </section>
+</main>
+
+<div id="final">
+  <section class="tela boas-vindas" aria-live="polite">
+    <div>
+      <h1>Bem-vinda,<br>Lol</h1>
+      <span class="filete" aria-hidden="true"></span>
+    </div>
+    <a class="role" href="#video" id="role">
+      Role para baixo
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+    </a>
+  </section>
+
+  <section id="video" class="tela video">
+    <div class="moldura" id="moldura">
+      <iframe id="player" title="Vídeo" allow="autoplay; fullscreen" allowfullscreen
+        data-src="https://drive.google.com/file/d/1NtvqhmDN0xrq9fLYgjuFe6DHwwy0HvaR/preview"></iframe>
+      <div class="cortina esq" aria-hidden="true"></div>
+      <div class="cortina dir" aria-hidden="true"></div>
+      <button id="bomfilme" type="button">Bom filme 🍿</button>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const nao = document.getElementById('nao');
+  const sim = document.getElementById('sim');
+  const player = document.getElementById('player');
+  const reduzido = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* =========== O "Não" que foge =========== */
+  const MARGEM = 16, ALCANCE = 90;
+  const frases = ['Não', 'Tem certeza?', 'Pensa bem…', 'Olha o Sim ali 👀', 'Não adianta',
+                  'Tá difícil, né?', 'Eu sou rápido 😌', 'Desiste…', 'Nunca vai me pegar', 'Clica no Sim 💖'];
+  let tentativas = 0;
+
+  const sobrepoe = (a, b, folga = 28) =>
+    !(a.right + folga < b.left || a.left - folga > b.right ||
+      a.bottom + folga < b.top || a.top - folga > b.bottom);
+
+  function fugir(px, py) {
+    tentativas++;
+
+    // A cada tentativa o Sim cresce e o Não encolhe
+    sim.style.setProperty('--s', Math.min(1 + tentativas * 0.09, 1.8));
+    nao.style.setProperty('--n', Math.max(1 - tentativas * 0.05, 0.6));
+
+    // Depois da última frase, recomeça o ciclo (sem voltar ao "Não" original)
+    nao.textContent = frases[1 + (tentativas - 1) % (frases.length - 1)];
+
+    if (!nao.classList.contains('solto')) {
+      const r = nao.getBoundingClientRect();
+      nao.style.left = r.left + 'px';
+      nao.style.top = r.top + 'px';
+      nao.classList.add('solto');
+      void nao.offsetWidth;
+    }
+
+    const w = nao.offsetWidth, h = nao.offsetHeight;
+    const maxX = innerWidth - w - MARGEM, maxY = innerHeight - h - MARGEM;
+    const rSim = sim.getBoundingClientRect();
+    let x, y, ok = false;
+    for (let i = 0; i < 50 && !ok; i++) {
+      x = MARGEM + Math.random() * Math.max(0, maxX - MARGEM);
+      y = MARGEM + Math.random() * Math.max(0, maxY - MARGEM);
+      const longe = px == null || Math.hypot(x + w / 2 - px, y + h / 2 - py) > ALCANCE * 2;
+      ok = longe && !sobrepoe({ left: x, top: y, right: x + w, bottom: y + h }, rSim);
+    }
+    nao.style.left = x + 'px';
+    nao.style.top = y + 'px';
+  }
+
+  function aoMover(e) {
+    if (e.pointerType !== 'mouse') return;
+    const r = nao.getBoundingClientRect();
+    const d = Math.hypot(r.left + r.width / 2 - e.clientX, r.top + r.height / 2 - e.clientY);
+    if (d < ALCANCE + r.width / 2) fugir(e.clientX, e.clientY);
+  }
+  document.addEventListener('pointermove', aoMover);
+
+  nao.addEventListener('pointerdown', e => { e.preventDefault(); fugir(e.clientX, e.clientY); });
+  nao.addEventListener('touchstart', e => { e.preventDefault(); fugir(); }, { passive: false });
+  nao.addEventListener('click', e => { e.preventDefault(); fugir(); });
+  nao.addEventListener('focus', () => { nao.blur(); sim.focus(); fugir(); });
+
+  addEventListener('resize', () => {
+    if (!nao.isConnected || !nao.classList.contains('solto')) return;
+    nao.style.left = Math.min(parseFloat(nao.style.left), innerWidth - nao.offsetWidth - MARGEM) + 'px';
+    nao.style.top = Math.min(parseFloat(nao.style.top), innerHeight - nao.offsetHeight - MARGEM) + 'px';
+  });
+
+  /* =========== Chuva de corações =========== */
+  function coracoes(origem) {
+    if (reduzido) return;
+    const r = origem.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const tipos = ['💖', '💗', '💕', '✨', '💛'];
+    for (let i = 0; i < 28; i++) {
+      const p = document.createElement('span');
+      p.className = 'particula';
+      p.textContent = tipos[i % tipos.length];
+      p.style.left = cx + 'px';
+      p.style.top = cy + 'px';
+      document.body.appendChild(p);
+      const ang = Math.random() * Math.PI * 2;
+      const dist = 120 + Math.random() * Math.min(innerWidth, innerHeight) * 0.45;
+      const dx = Math.cos(ang) * dist, dy = Math.sin(ang) * dist - 80;
+      p.animate([
+        { transform: 'translate(-50%,-50%) scale(.4)', opacity: 1 },
+        { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(1) rotate(${(Math.random() - .5) * 90}deg)`, opacity: 1, offset: .6 },
+        { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy + 140}px)) scale(.8)`, opacity: 0 }
+      ], { duration: 1600 + Math.random() * 600, easing: 'cubic-bezier(.2,.8,.3,1)' })
+       .onfinish = () => p.remove();
+    }
+  }
+
+  /* =========== Aceite =========== */
+  function aceitar(origem) {
+    coracoes(origem);
+    document.removeEventListener('pointermove', aoMover);
+    nao.remove();
+    player.src = player.dataset.src; // o player já carrega enquanto ela lê as boas-vindas
+    document.body.classList.add('aceito');
+    scrollTo(0, 0);
+    ativarRolagem();
+  }
+  sim.addEventListener('click', () => aceitar(sim));
+
+  /* =========== Rolagem animada de 1 segundo entre as telas =========== */
+  function ativarRolagem() {
+    const secoes = [document.querySelector('.boas-vindas'), document.getElementById('video')];
+    const DURACAO = reduzido ? 0 : 1000;
+    let atual = 0, bloqueado = false;
+    const suave = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+    function irPara(i) {
+      if (bloqueado || i < 0 || i >= secoes.length || i === atual) return;
+      atual = i;
+      bloqueado = true;
+      const inicio = scrollY, alvo = secoes[i].offsetTop, t0 = performance.now();
+      (function passo(agora) {
+        const p = DURACAO ? Math.min(1, (agora - t0) / DURACAO) : 1;
+        scrollTo(0, inicio + (alvo - inicio) * suave(p));
+        if (p < 1) requestAnimationFrame(passo);
+        else setTimeout(() => { bloqueado = false; }, 350); // absorve a inércia do trackpad
+      })(t0);
+    }
+
+    addEventListener('wheel', e => {
+      e.preventDefault();
+      if (Math.abs(e.deltaY) > 8) irPara(atual + Math.sign(e.deltaY));
+    }, { passive: false });
+
+    let y0 = null;
+    addEventListener('touchstart', e => { y0 = e.touches[0].clientY; }, { passive: true });
+    addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+    addEventListener('touchend', e => {
+      if (y0 == null) return;
+      const dy = y0 - e.changedTouches[0].clientY;
+      if (Math.abs(dy) > 40) irPara(atual + Math.sign(dy));
+      y0 = null;
+    });
+
+    addEventListener('keydown', e => {
+      if (e.target.closest('button, a')) return;
+      if (['ArrowDown', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); irPara(atual + 1); }
+      if (['ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); irPara(atual - 1); }
+    });
+
+    document.getElementById('role').addEventListener('click', e => { e.preventDefault(); irPara(1); });
+    addEventListener('resize', () => scrollTo(0, secoes[atual].offsetTop));
+  }
+
+  /* =========== Cortinas do cinema =========== */
+  document.getElementById('bomfilme').addEventListener('click', () => {
+    document.getElementById('moldura').classList.add('aberta');
+  });
+})();
+</script>
+</body>
+</html>
