@@ -132,6 +132,30 @@
   .tampa { position: absolute; top: 0; right: 0; width: 64px; height: 64px; z-index: 1; }
   .moldura iframe, .moldura video { width: 100%; height: 100%; border: 0; display: block; background: #000; }
   .moldura [hidden] { display: none !important; }
+  .palco { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 1.1rem; }
+  .dica { display: none; font-size: .95rem; font-weight: 600; color: var(--ink-soft); }
+
+  /* Celular: dica de girar (só para vídeo deitado, em pé, depois de abrir as cortinas) */
+  @media (pointer: coarse) and (orientation: portrait) {
+    .palco:has(.moldura.aberta.deitado) .dica { display: block; animation: surge .6s .8s both; }
+  }
+  /* Celular deitado: o player ocupa a tela inteira, em qualquer navegador, inclusive iPhone */
+  @media (pointer: coarse) and (orientation: landscape) {
+    body.aceito .moldura.aberta {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100dvh;
+      max-width: none;
+      aspect-ratio: auto;
+      border: 0;
+      border-radius: 0;
+      box-shadow: none;
+      z-index: 100;
+    }
+    body.aceito .moldura.aberta video { object-fit: contain; }
+    body.aceito .moldura.aberta #telacheia { display: none; }
+  }
   #telacheia {
     position: absolute;
     left: 10px; top: 10px;
@@ -215,6 +239,7 @@
   </section>
 
   <section id="video" class="tela video">
+    <div class="palco">
     <div class="moldura" id="moldura">
       <!-- 1ª opção: video.mp4 no próprio repositório (player nativo, tela cheia em qualquer celular) -->
       <video id="nativo" playsinline controls preload="none" hidden></video>
@@ -226,6 +251,8 @@
       <div class="cortina esq" aria-hidden="true"></div>
       <div class="cortina dir" aria-hidden="true"></div>
       <button id="bomfilme" type="button">Bom filme 🍿</button>
+    </div>
+    <p class="dica">📱 Vire o celular para ver em tela cheia</p>
     </div>
   </section>
 </div>
@@ -396,7 +423,12 @@
   }
 
   /* =========== Escolha do player =========== */
-  const proporcao = (w, h) => { if (w && h) moldura.style.setProperty('--proporcao', `${w} / ${h}`); };
+  const proporcao = (w, h) => {
+    if (!w || !h) return;
+    moldura.style.setProperty('--proporcao', `${w} / ${h}`);
+    moldura.classList.toggle('deitado', w >= h);
+  };
+  moldura.classList.add('deitado'); // suposição inicial até a proporção real chegar
 
   function usarDrive() {
     if (modo) return;
